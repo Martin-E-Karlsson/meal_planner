@@ -1,0 +1,1 @@
+En applikation för att planera en veckomeny skapad för Laboration 2 i kursen Utveckling av webbapplikationer.
