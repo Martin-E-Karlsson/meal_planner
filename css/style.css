@@ -1,0 +1,113 @@
+:root {
+  --color-text-primary: #2B2824;
+  --color-text-secondary: #6E6862;
+  --color-border: #EBE5DF;
+  --color-accent: #BD8D36;
+  --color-surface: #FFFFFF;
+  --color-background: #FCFAF6;
+  --color-tint: #FAF3E6;
+  --color-disabled: #9E9892;
+
+  --font-display: "Lora", Georgia, serif;
+  --font-ui: "Geist", system-ui, sans-serif;
+  --font-data: "Fragment Mono", monospace;
+
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  --radius-field: 0;
+  --radius-control: 4px;
+  --radius-screen: 16px;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  color: var(--color-text-primary);
+  background: var(--color-background);
+  font-family: var(--font-ui);
+  font-size: 15px;
+}
+
+.screen {
+  min-height: 100dvh;
+  padding: var(--space-6);
+  background: var(--color-background);
+}
+
+.app-title, .page-title, .section-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 700;
+}
+.app-title { font-size: 32px; }
+.page-title { font-size: 26px; }
+.section-title { font-size: 18px; }
+
+.label, .meal-code {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.meal-code { color: var(--color-accent); }
+
+.field, .week-select, .meal-row, .shopping-list, .ingredient-table {
+  width: 100%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+}
+.field, .week-select {
+  min-height: 44px;
+  padding: var(--space-4);
+  border-radius: var(--radius-field);
+}
+
+.button-primary {
+  min-height: 44px;
+  padding: 0 var(--space-5);
+  border: 0;
+  border-radius: var(--radius-control);
+  color: #fff;
+  background: var(--color-accent);
+  font-weight: 600;
+}
+
+.meal-row {
+  display: grid;
+  grid-template-columns: 32px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 36px;
+  padding: var(--space-2) var(--space-3);
+  border-width: 0 0 1px;
+}
+
+.portion-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-family: var(--font-data);
+}
+.portion-stepper__arrows {
+  display: flex;
+  flex-direction: column;
+  color: var(--color-accent);
+  font-size: 8px;
+  line-height: 1;
+}
+
+.quantity, .unit, .portion-value {
+  font-family: var(--font-data);
+  font-variant-numeric: tabular-nums;
+}
