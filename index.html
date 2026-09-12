@@ -39,7 +39,7 @@
           class="field"
           type="text"
           autocomplete="given-name"
-          placeholder="Martin"
+          placeholder="Namn"
           v-model="nameInput">
 
         <p v-if="loginError" class="form-error" role="alert">{{ loginError }}</p>
@@ -164,7 +164,7 @@
             ref="recipeName"
             class="field"
             type="text"
-            placeholder="Pasta carbonara"
+            placeholder="Receptnamn"
             v-model="newRecipe.name">
         </div>
 
@@ -207,7 +207,7 @@
                   class="field field--table"
                   type="text"
                   :aria-label="'Ingrediens ' + (index + 1)"
-                  placeholder="Pasta"
+                  placeholder="Ingrediens"
                   v-model="ingredient.name">
               </td>
               <td>
@@ -218,7 +218,7 @@
                   step="any"
                   inputmode="decimal"
                   :aria-label="'Mängd ' + (index + 1)"
-                  placeholder="320"
+                  placeholder="0"
                   v-model.number="ingredient.amount">
               </td>
               <td>
