@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Veckomenyn</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fragment+Mono&family=Geist:wght@400;500;600&family=Lora:wght@500;700&display=swap">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <app-header
+    :user="user"
+    :view="view"
+    :on-navigate="goTo"
+    :on-logout="logout"></app-header>
+
+  <main class="screen">
+
+    <!-- ==================================================================
+         GRIND: utan namn kommer man inte vidare. v-if styr vad användaren
+         har tillgång till — finns inget namn renderas bara det här.
+         ================================================================== -->
+    <section v-if="!user" class="gate" aria-labelledby="gate-heading">
+      <h1 id="gate-heading" class="page-title">Logga in</h1>
+      <p class="gate-lede">Skriv ditt namn så hämtar vi din veckomeny.</p>
+
+      <form class="gate-form" @submit.prevent="login">
+        <label class="label" for="name-input">Ditt namn</label>
+        <input
+          id="name-input"
+          ref="nameInput"
+          class="field"
+          type="text"
+          autocomplete="given-name"
+          placeholder="Namn"
+          v-model="nameInput">
+
+        <p v-if="loginError" class="form-error" role="alert">{{ loginError }}</p>
+
+        <button type="submit" class="button-primary">Logga in</button>
+      </form>
+    </section>
+
+
+    <!-- ==================================================================
+         VECKOPLANEN
+         ================================================================== -->
+    <section v-if="user && view === 'plan'" class="view" aria-labelledby="plan-heading">
+
+      <div class="view-head">
+        <h1 id="plan-heading" class="page-title">Min veckomeny</h1>
+        <button type="button" class="button-ghost" @click="goTo('recept')">+ Recept</button>
+      </div>
+
+      <div class="week-picker">
+        <label class="label" for="week-select">Vecka</label>
+        <select id="week-select" class="week-select" v-model.number="selectedWeek" @change="saveWeek">
+          <option v-for="week in weekNumbers" :key="week" :value="week">Vecka {{ week }}</option>
+        </select>
+      </div>
+
+      <div class="view--plan-body">
+
+      <ul class="day-list">
+        <li v-for="day in weekdays" :key="day.key" class="day-card">
+          <h2 class="section-title">{{ day.label }}</h2>
+
+          <div v-for="meal in meals" :key="meal.key" class="meal-row">
+            <span class="meal-code">{{ meal.code }}</span>
+
+            <select
+              class="meal-select"
+              :aria-label="meal.label + ' ' + day.label"
+              v-model.number="plan[day.key][meal.key].recipeId"
+              @change="savePlan">
+              <option :value="null">— välj recept —</option>
+              <option
+                v-for="recipe in recipesByCategory(meal.key)"
+                :key="recipe.id"
+                :value="recipe.id">{{ recipe.name }}</option>
+            </select>
+
+            <div class="portion-stepper" v-if="plan[day.key][meal.key].recipeId">
+              <button
+                type="button"
+                class="stepper-button"
+                :aria-label="'Färre portioner ' + meal.label + ' ' + day.label"
+                @click="changePortions(day.key, meal.key, -1)">−</button>
+
+              <span class="portion-value">{{ plan[day.key][meal.key].portions }}</span>
+
+              <button
+                type="button"
+                class="stepper-button"
+                :aria-label="'Fler portioner ' + meal.label + ' ' + day.label"
+                @click="changePortions(day.key, meal.key, 1)">+</button>
+            </div>
+          </div>
+        </li>
+      </ul>
+
+      <section class="shopping" aria-labelledby="shopping-heading">
+        <div class="view-head">
+          <h2 id="shopping-heading" class="section-title">Inköpslista</h2>
+          <button
+            v-if="boughtCount > 0"
+            type="button"
+            class="link-button"
+            @click="clearBought">Rensa markeringar</button>
+        </div>
+
+        <!-- Inget planerat ännu: listan finns inte att gå till. -->
+        <p v-if="shoppingList.length === 0" class="empty-state">
+          Planera några måltider ovan så räknar vi ihop vad du behöver handla.
+        </p>
+
+        <ul v-else class="shopping-list">
+          <li
+            v-for="item in shoppingList"
+            :key="item.key"
+            class="shopping-row"
+            :class="{ inhandlad: isBought(item.key) }"
+            @click="toggleBought(item.key)">
+
+            <span class="shopping-check" aria-hidden="true">{{ isBought(item.key) ? '✓' : '' }}</span>
+            <span class="shopping-name">{{ item.name }}</span>
+            <span class="quantity">{{ item.display }}</span>
+            <span class="unit">{{ item.unit }}</span>
+          </li>
+        </ul>
+
+        <p v-if="shoppingList.length > 0" class="shopping-hint">
+          Tryck på en rad för att markera den som inhandlad.
+        </p>
+      </section>
+
+      </div>
+    </section>
+
+
+    <!-- ==================================================================
+         RECEPTVYN: formuläret plus listan man kan ta bort ur
+         ================================================================== -->
+    <section v-if="user && view === 'recept'" class="view" aria-labelledby="recipe-heading">
+
+      <div class="view-head">
+        <h1 id="recipe-heading" class="page-title">Nytt recept</h1>
+        <button type="button" class="button-ghost" @click="goTo('plan')">Tillbaka</button>
+      </div>
+
+      <form class="recipe-form" @submit.prevent="addRecipe">
+
+        <div class="field-group">
+          <label class="label" for="recipe-name">Receptnamn</label>
+          <input
+            id="recipe-name"
+            ref="recipeName"
+            class="field"
+            type="text"
+            placeholder="Receptnamn"
+            v-model="newRecipe.name">
+        </div>
+
+        <div class="field-row">
+          <div class="field-group">
+            <label class="label" for="recipe-category">Måltid</label>
+            <select id="recipe-category" class="field" v-model="newRecipe.category">
+              <option v-for="meal in meals" :key="meal.key" :value="meal.key">{{ meal.label }}</option>
+            </select>
+          </div>
+
+          <div class="field-group">
+            <label class="label" for="recipe-portions">Portioner</label>
+            <input
+              id="recipe-portions"
+              class="field"
+              type="number"
+              min="1"
+              max="20"
+              inputmode="numeric"
+              v-model.number="newRecipe.portions">
+          </div>
+        </div>
+
+        <h2 class="section-title">Ingredienser</h2>
+
+        <table class="ingredient-table">
+          <thead>
+            <tr>
+              <th scope="col">Ingrediens</th>
+              <th scope="col">Mängd</th>
+              <th scope="col">Enhet</th>
+              <th scope="col"><span class="visually-hidden">Ta bort</span></th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="(ingredient, index) in newRecipe.ingredients" :key="index">
+              <td>
+                <input
+                  class="field field--table"
+                  type="text"
+                  :aria-label="'Ingrediens ' + (index + 1)"
+                  placeholder="Ingrediens"
+                  v-model="ingredient.name">
+              </td>
+              <td>
+                <input
+                  class="field field--table quantity"
+                  type="number"
+                  min="0"
+                  step="any"
+                  inputmode="decimal"
+                  :aria-label="'Mängd ' + (index + 1)"
+                  placeholder="0"
+                  v-model.number="ingredient.amount">
+              </td>
+              <td>
+                <select
+                  class="field field--table"
+                  :aria-label="'Enhet ' + (index + 1)"
+                  v-model="ingredient.unit">
+                  <option v-for="unit in units" :key="unit" :value="unit">{{ unit }}</option>
+                </select>
+              </td>
+              <td>
+                <!-- Raden går bara att ta bort när det finns mer än en. -->
+                <button
+                  v-if="newRecipe.ingredients.length > 1"
+                  type="button"
+                  class="row-remove"
+                  :aria-label="'Ta bort ingrediens ' + (index + 1)"
+                  @click="removeIngredientRow(index)">×</button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        <button type="button" class="link-button" @click="addIngredientRow">
+          + Lägg till ingrediens
+        </button>
+
+        <p v-if="recipeError" class="form-error" role="alert">{{ recipeError }}</p>
+        <p v-if="recipeSaved" class="form-success" role="status">{{ recipeSaved }}</p>
+
+        <!-- Spara-knappen finns inte förrän receptet går att spara. -->
+        <button v-if="isRecipeValid" type="submit" class="button-primary">Spara recept</button>
+        <p v-else class="empty-state">
+          Fyll i namn och minst en ingrediens med mängd för att kunna spara.
+        </p>
+      </form>
+
+      <section class="saved-recipes" aria-labelledby="saved-heading">
+        <h2 id="saved-heading" class="section-title">Mina recept</h2>
+
+        <p v-if="recipes.length === 0" class="empty-state">
+          Du har inga recept sparade ännu.
+        </p>
+
+        <ul v-else class="recipe-list">
+          <li v-for="recipe in recipes" :key="recipe.id" class="recipe-row">
+            <span class="meal-code">{{ mealCode(recipe.category) }}</span>
+            <span class="recipe-name">{{ recipe.name }}</span>
+            <span class="recipe-count">{{ recipe.ingredients.length }} ingr.</span>
+            <button
+              type="button"
+              class="row-remove"
+              :aria-label="'Ta bort ' + recipe.name"
+              @click="deleteRecipe(recipe.id)">×</button>
+          </li>
+        </ul>
+      </section>
+    </section>
+
+  </main>
+
+  <app-footer></app-footer>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script src="js/data.js"></script>
+<script src="js/components.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
